@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "arabic-legal-rag"
+version = "0.1.0"
+description = "Arabic legal Q&A over the Egyptian Civil Code (RAG)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pdfplumber",
+  "arabic-reshaper",
+  "python-bidi",
+  "sentence-transformers",
+  "chromadb",
+  "rank-bm25",
+  "fastapi",
+  "uvicorn[standard]",
+  "pydantic>=2",
+  "pydantic-settings",
+  "httpx",
+  "openai",
+  "pyyaml",
+]
+
+[project.optional-dependencies]
+track = ["mlflow", "ragas", "datasets"]
+serve = ["bentoml", "locust"]            # vllm / autoawq: install separately on a GPU machine
+obs   = ["langfuse", "prometheus-client", "evidently"]
+
+[dependency-groups]
+dev = [
+  "pytest",
+  "pytest-asyncio",
+  "ruff",
+  "black",
+  "mypy",
+  "pre-commit",
+  "dvc",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/arabic_legal_rag"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.black]
+line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
