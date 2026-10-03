@@ -1,13 +1,13 @@
 import re
 
-LEVELS = ["part", "book", "chapter", "section", "subsection", "topic"]
+LEVELS = ["part", "book", "chapter", "section", "topic"]
 PATTERNS = {
     "part": re.compile(r"^(FIRST|SECOND|THIRD|FOURTH)\s+PART", re.I),
     "book": re.compile(r"^BOOK\s+[IVXL]+", re.I),
     "chapter": re.compile(r"^CHAPTER\s+[IVXL]+", re.I),
     "section": re.compile(r"^SECTION\s+[IVXL\d]+", re.I),
-    "subsection": re.compile(r"^\d+\.\s+\S"),
 }
+NUMBERED = re.compile(r"^\d+\.\s+\S")
 
 
 def heading_level(en_cell: str) -> str | None:
@@ -15,18 +15,22 @@ def heading_level(en_cell: str) -> str | None:
     for level, pat in PATTERNS.items():
         if pat.match(first):
             return level
+    if NUMBERED.match(first):  # numbered heading is now a topic
+        return "topic"
     if first.rstrip().endswith(":") and len(first) < 80:
         return "topic"
     return None
 
 
 def heading_title(en_cell: str, level: str) -> str:
-    """'BOOK I\\nOBLIGATIONS GENERALLY' -> 'Obligations Generally'; topic -> 'Consent'."""
+    """'BOOK I\\nOBLIGATIONS GENERALLY' -> 'Obligations Generally'.
+
+    topic: '1. Elements of Contracts\\nConsent:' -> 'Elements of Contracts > Consent'
+    """
     lines = [ln.strip() for ln in en_cell.strip().splitlines() if ln.strip()]
     if level == "topic":
-        return lines[0].rstrip(":").strip()
-    if level == "subsection":
-        return re.sub(r"^\d+\.\s*", "", " ".join(lines))
+        parts = [re.sub(r"^\d+\.\s*", "", ln).rstrip(":").strip() for ln in lines]
+        return " > ".join(p for p in parts if p)
     return " ".join(lines[1:]).title() if len(lines) > 1 else lines[0].title()
 
 

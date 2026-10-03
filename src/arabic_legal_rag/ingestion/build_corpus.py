@@ -7,7 +7,7 @@ import pdfplumber
 from .hierarchy import LEVELS, heading_level, heading_title, update_hierarchy
 from .normalize_ar import clean_ar_cell
 
-ART_EN = re.compile(r"^Article\s+(\d+)", re.I)
+ART_EN = re.compile(r"^\s*A?rticle\s*(\d+)", re.I)
 ART_AR = re.compile(
     r"^\u0645\u0627\u062f\u0629\s*\(?\s*(\d+)\s*\)?"
 )  # مادة ( 89 ), after normalization
@@ -19,17 +19,30 @@ def clean_en(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "")).strip()
 
 
+def without_highlights(page):
+    """Hide large filled rectangles (review highlights) so they can't create fake cells."""
+
+    def keep(obj):
+        if obj.get("object_type") != "rect":
+            return True
+        thin = obj["width"] < 2 or obj["height"] < 2  # thin rect = a drawn border line
+        return thin or not obj.get("fill")
+
+    return page.filter(keep)
+
+
 def build(pdf_path: str) -> list[dict]:
     records, current = [], None
     h = dict.fromkeys(LEVELS, "")
 
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
-            for table in page.extract_tables():
+            for table in without_highlights(page).extract_tables():
                 for row in table:
                     if not row or len(row) < 2:
                         continue
-                    en_raw, ar_raw = row[0] or "", row[1] or ""
+                    en_raw = row[0] or ""
+                    ar_raw = "\n".join(c or "" for c in row[1:])
                     if not (en_raw.strip() or ar_raw.strip()):
                         continue
                     ar = clean_ar_cell(ar_raw)
