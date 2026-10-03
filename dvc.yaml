@@ -1,0 +1,13 @@
+stages:
+  extract:
+    cmd: python -m arabic_legal_rag.ingestion.build_corpus data/raw/egyptian_civil_code.pdf data/processed/civil_code.json
+    deps:
+      - data/raw/egyptian_civil_code.pdf
+      - src/arabic_legal_rag/ingestion
+    outs:
+      - data/processed/civil_code.json
+  validate:
+    cmd: python -m pytest tests/test_corpus_validation.py -q
+    deps:
+      - data/processed/civil_code.json
+      - tests/test_corpus_validation.py

@@ -1,0 +1,31 @@
+schema: '2.0'
+stages:
+  extract:
+    cmd: python -m arabic_legal_rag.ingestion.build_corpus
+      data/raw/egyptian_civil_code.pdf data/processed/civil_code.json
+    deps:
+    - path: data/raw/egyptian_civil_code.pdf
+      hash: md5
+      md5: 5086ef5f16f15d856278db943e58e948
+      size: 2599703
+    - path: src/arabic_legal_rag/ingestion
+      hash: md5
+      md5: 9417fa65ed3ad0ac71b07c4d40334145.dir
+      size: 17786
+      nfiles: 8
+    outs:
+    - path: data/processed/civil_code.json
+      hash: md5
+      md5: ccaa28475961f56f05711285e6ebd3fc
+      size: 1305692
+  validate:
+    cmd: python -m pytest tests/test_corpus_validation.py -q
+    deps:
+    - path: data/processed/civil_code.json
+      hash: md5
+      md5: ccaa28475961f56f05711285e6ebd3fc
+      size: 1305692
+    - path: tests/test_corpus_validation.py
+      hash: md5
+      md5: 2f12bd2f42081453e230b209c45840cf
+      size: 933
