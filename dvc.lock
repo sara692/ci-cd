@@ -1,7 +1,7 @@
 schema: '2.0'
 stages:
   extract:
-    cmd: python -m arabic_legal_rag.ingestion.build_corpus
+    cmd: python -m arabic_legal_rag.ingestion.build_corpus 
       data/raw/egyptian_civil_code.pdf data/processed/civil_code.json
     deps:
     - path: data/raw/egyptian_civil_code.pdf
@@ -10,22 +10,55 @@ stages:
       size: 2599703
     - path: src/arabic_legal_rag/ingestion
       hash: md5
-      md5: 9417fa65ed3ad0ac71b07c4d40334145.dir
-      size: 17786
-      nfiles: 8
+      md5: 36c2e3f038cb6e90aad0e8eb7359121a.dir
+      size: 33340
+      nfiles: 14
     outs:
     - path: data/processed/civil_code.json
       hash: md5
-      md5: ccaa28475961f56f05711285e6ebd3fc
-      size: 1305692
+      md5: 6371edd4ab73e19db04f1f7964852d5d
+      size: 1280237
   validate:
     cmd: python -m pytest tests/test_corpus_validation.py -q
     deps:
     - path: data/processed/civil_code.json
       hash: md5
-      md5: ccaa28475961f56f05711285e6ebd3fc
-      size: 1305692
+      md5: 6371edd4ab73e19db04f1f7964852d5d
+      size: 1280237
     - path: tests/test_corpus_validation.py
       hash: md5
-      md5: 2f12bd2f42081453e230b209c45840cf
-      size: 933
+      md5: b87f4992073da14555f58f620069bc02
+      size: 627
+  index:
+    cmd: python -m arabic_legal_rag.ingestion.index
+    deps:
+    - path: data/processed/civil_code.json
+      hash: md5
+      md5: 6371edd4ab73e19db04f1f7964852d5d
+      size: 1280237
+    - path: src/arabic_legal_rag/config.py
+      hash: md5
+      md5: 29a1daa4033461731c4d44b428831c4b
+      size: 236
+    - path: src/arabic_legal_rag/ingestion
+      hash: md5
+      md5: 36c2e3f038cb6e90aad0e8eb7359121a.dir
+      size: 33340
+      nfiles: 14
+    params:
+      params.yaml:
+        batch_size: 32
+        chunk_text: ar_en
+        embedding_model: intfloat/multilingual-e5-base
+        passage_prefix: 'passage: '
+        query_prefix: 'query: '
+    outs:
+    - path: data/index
+      hash: md5
+      md5: 0bf48d5ccfbffd025e168bf8607a6369.dir
+      size: 15337908
+      nfiles: 6
+    - path: reports/index_manifest.json
+      hash: md5
+      md5: 5496d753e921ca30a54b949262c9750e
+      size: 262

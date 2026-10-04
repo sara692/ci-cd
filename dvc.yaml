@@ -11,3 +11,21 @@ stages:
     deps:
       - data/processed/civil_code.json
       - tests/test_corpus_validation.py
+
+  index:
+    cmd: python -m arabic_legal_rag.ingestion.index
+    deps:
+      - data/processed/civil_code.json
+      - src/arabic_legal_rag/ingestion
+      - src/arabic_legal_rag/config.py
+    params:
+      - chunk_text
+      - embedding_model
+      - query_prefix
+      - passage_prefix
+      - batch_size
+    outs:
+      - data/index
+    metrics:
+      - reports/index_manifest.json:
+          cache: false
