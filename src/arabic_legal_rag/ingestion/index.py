@@ -8,10 +8,11 @@ from .chunker import build_chunks
 from .embedder import embed, token_report
 
 
-def build_index(params: dict | None = None) -> dict:
+def build_index(params, manifest_path=None):
     p = params or load_params()
     corpus = ROOT / p["corpus_path"]
     records = json.loads(corpus.read_text(encoding="utf-8"))
+    manifest_path = manifest_path or ROOT / "reports" / "index_manifest.json"
 
     chunks = build_chunks(records, p["chunk_text"])
     assert len(chunks) == len(records), "chunking must be 1:1 with articles"
@@ -43,7 +44,7 @@ def build_index(params: dict | None = None) -> dict:
         **report,
     }
     (ROOT / "reports").mkdir(exist_ok=True)
-    (ROOT / "reports" / "index_manifest.json").write_text(json.dumps(manifest, indent=2))
+    manifest_path.write_text(json.dumps(manifest, indent=2))
     return manifest
 
 

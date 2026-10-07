@@ -25,7 +25,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-track = ["mlflow", "ragas", "datasets"]
+track = [
+    "mlflow",
+    "ragas",
+    "datasets",
+    "langchain-openai>=1.6.7",
+    "langchain-huggingface>=1.2.2",
+    "langchain-community==0.4.1",
+]
 serve = ["bentoml", "locust"]            # vllm / autoawq: install separately on a GPU machine
 obs   = ["langfuse", "prometheus-client", "evidently"]
 
@@ -55,7 +62,14 @@ ignore = ["E501"]
 line-length = 100
 target-version = ["py311"]
 
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["slow: needs the built index and the embedding model"]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

@@ -1,5 +1,8 @@
 from functools import lru_cache
 
+from .config import load_params
+from .generation.answer import answer_question
+from .generation.llm_client import make_llm
 from .ingestion.index import build_index
 from .retrieval.retriever import Retriever
 
@@ -21,3 +24,13 @@ def retrieve(question: str, k: int | None = None, where: dict | None = None) -> 
 
 def documents_indexed() -> int:
     return _retriever().count()
+
+
+@lru_cache(maxsize=1)
+def _llm():
+    return make_llm(load_params())
+
+
+def query(question: str, llm=None) -> dict:
+    """question -> {"answer": str, "sources": list[str]} (sources are article citations)."""
+    return answer_question(question, retrieve, llm or _llm(), load_params())

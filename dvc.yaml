@@ -29,3 +29,14 @@ stages:
     metrics:
       - reports/index_manifest.json:
           cache: false
+  evaluate:
+    cmd: uv run python -m arabic_legal_rag.evaluation.ragas_eval
+    deps:
+      - data/index
+      - data/eval/qa_50_ragas.jsonl
+      - src/arabic_legal_rag/evaluation
+      - src/arabic_legal_rag/generation
+    params: [embedding_model, chunk_text, top_k, llm_temperature]
+    metrics:
+      - reports/ragas_metrics.json:
+          cache: false

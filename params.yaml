@@ -7,3 +7,9 @@ query_prefix: "query: " # e5 needs prefixes; bge-m3 does not ("" for both)
 passage_prefix: "passage: "
 top_k: 5
 batch_size: 32
+llm_temperature: 0.0
+llm_max_tokens: 700
+max_context_articles: 5
+min_score: 0.0 # calibrate in step 8
+mlflow_experiment: arabic-legal-rag-chunking
+judge_embedding_model: intfloat/multilingual-e5-base
