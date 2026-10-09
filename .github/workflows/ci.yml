@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_FROZEN: "1"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - run: uv sync --extra dev
+      - run: uv run ruff check .
+      - run: uv run black --check .
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - run: uv sync --extra dev
+      - run: uv run pytest -m "not slow" -q
+
+  evaluate:
+    runs-on: ubuntu-latest
+    needs: test
+    timeout-minutes: 40
+    # forks get no secrets, so the gate can't run for them
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    env:
+      LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+      LLM_MODEL: ${{ vars.LLM_MODEL }}
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+      JUDGE_BASE_URL: ${{ vars.JUDGE_BASE_URL }}
+      JUDGE_MODEL: ${{ vars.JUDGE_MODEL }}
+      JUDGE_API_KEY: ${{ secrets.JUDGE_API_KEY }}
+      JUDGE_WORKERS: "1"
+      HF_HOME: ${{ github.workspace }}/.hf
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }} # example: S3-type DVC remote
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - run: uv sync --extra track
+
+      - name: Cache embedding model
+        uses: actions/cache@v4
+        with:
+          path: .hf
+          key: hf-${{ hashFiles('params.yaml') }}
+
+      - name: DVC pull
+        run: uv run dvc pull
+
+      - name: Rebuild index
+        run: uv run dvc repro index
+
+      - name: RAGAS gate
+        run: uv run python -m arabic_legal_rag.evaluation.ci_gate
+
+      - name: Upload metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-metrics
+          path: reports/ci_metrics.json
+
+      - name: Upload index for the image build
+        uses: actions/upload-artifact@v4
+        with:
+          name: index
+          path: data/index
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: evaluate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: index
+          path: data/index
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ghcr.io/${{ github.repository }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

@@ -15,20 +15,26 @@ from arabic_legal_rag.evaluation.ragas_eval import evaluate_config, load_items
 from arabic_legal_rag.ingestion.index import build_index
 from arabic_legal_rag.retrieval.retriever import Retriever
 
-E5 = dict(
-    embedding_model="intfloat/multilingual-e5-base",
-    query_prefix="query: ",
-    passage_prefix="passage: ",
-)
-BGE = dict(embedding_model="BAAI/bge-m3", query_prefix="", passage_prefix="")
+NEMO = dict(embedding_model="nvidia/nemotron-3-embed-1b:free", query_prefix="", passage_prefix="")
+BGE_API = dict(embedding_model="baai/bge-m3", query_prefix="", passage_prefix="")
 
 GRID = {
-    "e5_ar": {**E5, "chunk_text": "ar_only"},
-    "e5_aren": {**E5, "chunk_text": "ar_en"},
-    "e5_header": {**E5, "chunk_text": "header_ar_en"},
-    "bge_ar": {**BGE, "chunk_text": "ar_only"},
-    "bge_aren": {**BGE, "chunk_text": "ar_en"},
-    "bge_header": {**BGE, "chunk_text": "header_ar_en"},
+    "nemo_aren": {
+        "embedding_model": "nvidia/nemotron-3-embed-1b:free",
+        "query_prefix": "",
+        "passage_prefix": "",
+        "chunk_text": "ar_en",
+        "index_dir": "data/index_nemotron",
+        "min_score": 0.30,  # provisional: calibrate with the min_score table script
+    },
+    "bge_aren": {
+        "embedding_model": "baai/bge-m3",
+        "query_prefix": "",
+        "passage_prefix": "",
+        "chunk_text": "ar_en",
+        "index_dir": "data/index_bge",
+        # min_score inherited from params.yaml: set it for bge-m3 first
+    },
 }
 
 
@@ -66,7 +72,7 @@ def main(only=None):
         if only and name not in only:
             continue
         params = {**copy.deepcopy(load_params()), **override}
-        params["index_dir"] = str(ROOT / "data" / "index_runs" / name)
+        index_dir = ROOT / params["index_dir"]
         manifest = ROOT / "data" / "index_runs" / f"{name}_manifest.json"
         with mlflow.start_run(run_name=name):
             mlflow.log_params(
@@ -75,14 +81,19 @@ def main(only=None):
                     "overlap": 0,
                     "embedding_model": params["embedding_model"],
                     "chunk_text": params["chunk_text"],
+                    "index_dir": params["index_dir"],
+                    "min_score": params["min_score"],
                     "top_k": params["top_k"],
-                    "llm_model": __import__("os").environ.get("LLM_MODEL", ""),
-                    "judge_model": __import__("os").environ.get("JUDGE_MODEL", ""),
+                    "llm_model": os.environ.get("LLM_MODEL", ""),
+                    "judge_model": os.environ.get("JUDGE_MODEL", ""),
                 }
             )
             mlflow.set_tag("git_commit", subprocess.getoutput("git rev-parse --short HEAD"))
-            build_index(params, manifest_path=manifest)
-            mlflow.log_artifact(str(manifest))
+            if os.environ.get("REBUILD") == "1" or not index_dir.exists():
+                build_index(params, manifest_path=manifest)
+                mlflow.log_artifact(str(manifest))
+            else:
+                print(f"[{name}] reusing index at {index_dir}")
             m = probe_metrics(params)
             r, rows = evaluate_config(params, items)
             for k, v in {**m, **r}.items():

@@ -34,3 +34,6 @@ def _llm():
 def query(question: str, llm=None) -> dict:
     """question -> {"answer": str, "sources": list[str]} (sources are article citations)."""
     return answer_question(question, retrieve, llm or _llm(), load_params())
+
+
+print(retrieve("what is 147 article", 5))

@@ -12,7 +12,6 @@ dependencies = [
   "pdfplumber",
   "arabic-reshaper",
   "python-bidi",
-  "sentence-transformers",
   "chromadb",
   "rank-bm25",
   "fastapi",
@@ -22,6 +21,8 @@ dependencies = [
   "httpx",
   "openai",
   "pyyaml",
+  "python-dotenv",
+  "numpy",
 ]
 
 [project.optional-dependencies]
@@ -30,7 +31,6 @@ track = [
     "ragas",
     "datasets",
     "langchain-openai>=1.6.7",
-    "langchain-huggingface>=1.2.2",
     "langchain-community==0.4.1",
 ]
 serve = ["bentoml", "locust"]            # vllm / autoawq: install separately on a GPU machine
@@ -64,12 +64,4 @@ target-version = ["py311"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["slow: needs the built index and the embedding model"]
-
-[tool.uv.sources]
-torch = [{ index = "pytorch-cpu" }]
-
-[[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-explicit = true
+markers = ["slow: needs the built index and the embeddings API (EMBED_API_KEY)"]

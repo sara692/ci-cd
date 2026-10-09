@@ -7,8 +7,7 @@ import statistics
 import time
 from pathlib import Path
 
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from ragas import EvaluationDataset, RunConfig, evaluate
 from ragas.embeddings import LangchainEmbeddingsWrapper
 from ragas.llms import LangchainLLMWrapper
@@ -42,7 +41,13 @@ def judge_models(params):
         model=_env("MODEL", "MODEL"),
         temperature=0,
     )
-    emb = HuggingFaceEmbeddings(model_name=params["judge_embedding_model"])
+    emb = OpenAIEmbeddings(
+        base_url=os.environ.get("EMBED_BASE_URL", "https://openrouter.ai/api/v1"),
+        api_key=os.environ["EMBED_API_KEY"],
+        model=params["judge_embedding_model"],
+        check_embedding_ctx_length=False,  # else it sends token IDs, which non-OpenAI models reject
+        chunk_size=16,  # keep batches small for the free route
+    )
     return LangchainLLMWrapper(llm), LangchainEmbeddingsWrapper(emb)
 
 

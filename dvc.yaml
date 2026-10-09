@@ -25,7 +25,7 @@ stages:
       - passage_prefix
       - batch_size
     outs:
-      - data/index
+      - data/index_bge
     metrics:
       - reports/index_manifest.json:
           cache: false

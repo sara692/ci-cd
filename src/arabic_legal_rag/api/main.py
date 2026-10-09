@@ -29,12 +29,26 @@ def check_index_matches_params() -> None:
             )
 
 
+def llm_configured() -> bool:
+    return bool(os.getenv("LLM_BASE_URL") and os.getenv("LLM_MODEL"))
+
+
+def embeddings_configured() -> bool:
+    return bool(os.getenv("EMBED_API_KEY"))
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     check_index_matches_params()
     rag.documents_indexed()  # opens the index; fails fast if it is missing
-    rag.retrieve("warm-up", 1)  # loads the embedding model before the first request
-    if not (os.getenv("LLM_BASE_URL") and os.getenv("LLM_MODEL")):
+    if embeddings_configured():
+        try:
+            rag.retrieve("warm-up", 1)  # checks the embedding API key and route once
+        except openai.OpenAIError:
+            log.exception("embedding API warm-up failed; /ask will answer 503 until it works")
+    else:
+        log.warning("EMBED_API_KEY not set: /ask will answer 503")
+    if not llm_configured():
         log.warning("LLM_BASE_URL / LLM_MODEL not set: /ask will answer 503")
     yield
 
@@ -49,10 +63,10 @@ def health() -> dict:
 
 @app.post("/ask", response_model=AskResponse)
 def ask(req: AskRequest) -> dict:
-    if not (os.getenv("LLM_BASE_URL") and os.getenv("LLM_MODEL")):
-        raise HTTPException(status_code=503, detail="LLM backend is not configured")
+    if not (llm_configured() and embeddings_configured()):
+        raise HTTPException(status_code=503, detail="LLM or embedding backend is not configured")
     try:
         return rag.query(req.question)
     except openai.OpenAIError as exc:
-        log.exception("LLM call failed")
-        raise HTTPException(status_code=503, detail="LLM backend unavailable") from exc
+        log.exception("LLM or embedding call failed")
+        raise HTTPException(status_code=503, detail="LLM or embedding backend unavailable") from exc
