@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  UV_FROZEN: "1"
+  UV_FROZEN: "1" # use uv.lock exactly, never re-resolve in CI
 
 jobs:
   lint:
@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with: { enable-cache: true }
-      - run: uv sync --extra dev
+      - run: uv sync # base deps + the `dev` dependency group (ruff, black, pytest)
       - run: uv run ruff check .
       - run: uv run black --check .
 
@@ -30,8 +30,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with: { enable-cache: true }
-      - run: uv sync --extra dev
-      - run: uv run pytest -m "not slow" -q
+      - run: uv sync
+      - run: uv run pytest -m "not slow" -q # `slow` tests need the built index and the embeddings API
 
   evaluate:
     runs-on: ubuntu-latest
@@ -40,33 +40,29 @@ jobs:
     # forks get no secrets, so the gate can't run for them
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
     env:
+      ANONYMIZED_TELEMETRY: "False"
+      # answer LLM
       LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
       LLM_MODEL: ${{ vars.LLM_MODEL }}
       LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+      # RAGAS judge (a different model from the generator)
       JUDGE_BASE_URL: ${{ vars.JUDGE_BASE_URL }}
       JUDGE_MODEL: ${{ vars.JUDGE_MODEL }}
       JUDGE_API_KEY: ${{ secrets.JUDGE_API_KEY }}
       JUDGE_WORKERS: "1"
-      HF_HOME: ${{ github.workspace }}/.hf
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }} # example: S3-type DVC remote
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      # embeddings API (no local model, no Hugging Face)
+      EMBED_BASE_URL: ${{ vars.EMBED_BASE_URL }}
+      EMBED_API_KEY: ${{ secrets.EMBED_API_KEY }}
+      EMBED_MAX_TOKENS: "8192"
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with: { enable-cache: true }
-      - run: uv sync --extra track
+      - run: uv sync --no-dev --extra track
 
-      - name: Cache embedding model
-        uses: actions/cache@v4
-        with:
-          path: .hf
-          key: hf-${{ hashFiles('params.yaml') }}
-
-      - name: DVC pull
-        run: uv run dvc pull
-
+      # No DVC: the index is rebuilt from data/processed/civil_code.json, which must be committed to git.
       - name: Rebuild index
-        run: uv run dvc repro index
+        run: uv run python -m arabic_legal_rag.ingestion.index
 
       - name: RAGAS gate
         run: uv run python -m arabic_legal_rag.evaluation.ci_gate
@@ -82,7 +78,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: index
-          path: data/index
+          path: |
+            data/index_bge
+            reports/index_manifest.json
 
   docker:
     runs-on: ubuntu-latest
@@ -96,19 +94,24 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: index
-          path: data/index
+          path: . # restores data/index_bge/ and reports/index_manifest.json
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5 # lower-cases the image name, which ghcr.io requires
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha
+            type=raw,value=latest
       - uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: |
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
-            ghcr.io/${{ github.repository }}:latest
+          tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
