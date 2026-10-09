@@ -28,3 +28,4 @@ infra/monitoring/secrets/
 .env
 .env.*
 !.env.example
+!data/processed/civil_code.json
