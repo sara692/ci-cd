@@ -286,6 +286,7 @@ dependencies = [
     { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "openai" },
     { name = "pdfplumber" },
+    { name = "prometheus-client" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-bidi" },
@@ -304,7 +305,6 @@ drift = [
 ]
 monitor = [
     { name = "langfuse" },
-    { name = "prometheus-client" },
 ]
 serve = [
     { name = "bentoml" },
@@ -346,7 +346,7 @@ requires-dist = [
     { name = "numpy" },
     { name = "openai" },
     { name = "pdfplumber" },
-    { name = "prometheus-client", marker = "extra == 'monitor'" },
+    { name = "prometheus-client" },
     { name = "pydantic", specifier = ">=2" },
     { name = "pydantic-settings" },
     { name = "python-bidi" },
