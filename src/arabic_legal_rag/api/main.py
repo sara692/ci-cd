@@ -1,13 +1,18 @@
 import json
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 
 import openai
 from fastapi import FastAPI, HTTPException
+from prometheus_client import make_asgi_app
 
 from .. import rag
 from ..config import ROOT, load_params
+from ..observability import metrics
+from ..observability.tracing import enabled as tracing_enabled
+from ..observability.tracing import traced_query
 from .schemas import AskRequest, AskResponse, HealthResponse
 
 log = logging.getLogger("rag.api")
@@ -25,7 +30,7 @@ def check_index_matches_params() -> None:
         if built.get(key) != wanted[key]:
             raise RuntimeError(
                 f"index built with {key}={built.get(key)!r} but params.yaml says "
-                f"{wanted[key]!r}: run `dvc repro`"
+                f"{wanted[key]!r}: rebuild with `uv run python -m arabic_legal_rag.ingestion.index`"
             )
 
 
@@ -51,9 +56,14 @@ async def lifespan(_: FastAPI):
     if not llm_configured():
         log.warning("LLM_BASE_URL / LLM_MODEL not set: /ask will answer 503")
     yield
+    if tracing_enabled():  # send the last traces before the process ends
+        from langfuse import get_client
+
+        get_client().flush()
 
 
 app = FastAPI(title="Arabic Legal RAG", version="0.1.0", lifespan=lifespan)
+app.mount("/metrics", make_asgi_app())
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -63,10 +73,18 @@ def health() -> dict:
 
 @app.post("/ask", response_model=AskResponse)
 def ask(req: AskRequest) -> dict:
+    start = time.perf_counter()
     if not (llm_configured() and embeddings_configured()):
+        metrics.record_request("unavailable", time.perf_counter() - start)
         raise HTTPException(status_code=503, detail="LLM or embedding backend is not configured")
     try:
-        return rag.query(req.question)
+        result, _trace_id = traced_query(req.question, rag.query)
     except openai.OpenAIError as exc:
+        metrics.record_request("unavailable", time.perf_counter() - start)
         log.exception("LLM or embedding call failed")
         raise HTTPException(status_code=503, detail="LLM or embedding backend unavailable") from exc
+    except Exception:
+        metrics.record_request("error", time.perf_counter() - start)
+        raise
+    metrics.record_request("ok", time.perf_counter() - start)
+    return result

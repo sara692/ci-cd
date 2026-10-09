@@ -296,8 +296,13 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-obs = [
+drift = [
     { name = "evidently" },
+    { name = "scikit-learn" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "scipy", version = "1.18.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+]
+monitor = [
     { name = "langfuse" },
     { name = "prometheus-client" },
 ]
@@ -330,18 +335,18 @@ requires-dist = [
     { name = "bentoml", marker = "extra == 'serve'" },
     { name = "chromadb" },
     { name = "datasets", marker = "extra == 'track'" },
-    { name = "evidently", marker = "extra == 'obs'" },
+    { name = "evidently", marker = "extra == 'drift'" },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "langchain-community", marker = "extra == 'track'", specifier = "==0.4.1" },
     { name = "langchain-openai", marker = "extra == 'track'", specifier = ">=1.6.7" },
-    { name = "langfuse", marker = "extra == 'obs'" },
+    { name = "langfuse", marker = "extra == 'monitor'" },
     { name = "locust", marker = "extra == 'serve'" },
     { name = "mlflow", marker = "extra == 'track'" },
     { name = "numpy" },
     { name = "openai" },
     { name = "pdfplumber" },
-    { name = "prometheus-client", marker = "extra == 'obs'" },
+    { name = "prometheus-client", marker = "extra == 'monitor'" },
     { name = "pydantic", specifier = ">=2" },
     { name = "pydantic-settings" },
     { name = "python-bidi" },
@@ -349,9 +354,11 @@ requires-dist = [
     { name = "pyyaml" },
     { name = "ragas", marker = "extra == 'track'" },
     { name = "rank-bm25" },
+    { name = "scikit-learn", marker = "extra == 'drift'" },
+    { name = "scipy", marker = "extra == 'drift'" },
     { name = "uvicorn", extras = ["standard"] },
 ]
-provides-extras = ["track", "serve", "obs"]
+provides-extras = ["track", "serve", "monitor", "drift"]
 
 [package.metadata.requires-dev]
 dev = [

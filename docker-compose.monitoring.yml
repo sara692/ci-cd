@@ -1,0 +1,19 @@
+services:
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    volumes:
+      - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports: ["9095:9090"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    volumes:
+      - ./infra/monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./infra/monitoring/secrets:/etc/alertmanager/secrets:ro
+    ports: ["9093:9093"]
+  grafana:
+    image: grafana/grafana:11.3.0
+    volumes:
+      - ./infra/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports: ["3031:3000"]

@@ -22,3 +22,9 @@ notebooks
 
 # built indexes (CI rebuilds them)
 data/index*/
+
+logs/
+infra/monitoring/secrets/
+.env
+.env.*
+!.env.example

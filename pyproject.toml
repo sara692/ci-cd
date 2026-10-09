@@ -34,7 +34,8 @@ track = [
     "langchain-community==0.4.1",
 ]
 serve = ["bentoml", "locust"]            # vllm / autoawq: install separately on a GPU machine
-obs   = ["langfuse", "prometheus-client", "evidently"]
+monitor = ["langfuse", "prometheus-client"]
+drift   = ["evidently", "scikit-learn", "scipy"]
 
 [dependency-groups]
 dev = [

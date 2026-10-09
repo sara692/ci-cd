@@ -15,12 +15,12 @@ WORKDIR /app
 
 # 1) dependencies only (cached until pyproject.toml / uv.lock change)
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN uv sync --frozen --no-dev --no-install-project --extra monitor
 
 # 2) the package (hatchling needs README.md)
 COPY README.md ./
 COPY src ./src
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev --extra monitor
 
 # 3) non-root user, then app data
 RUN useradd --uid 1000 --create-home app

@@ -1,0 +1,12 @@
+services:
+  rag-stable:
+    image: ghcr.io/<your-user>/arabic-legal-rag:stable
+    env_file: .env
+  rag-canary:
+    image: ghcr.io/<your-user>/arabic-legal-rag:canary
+    env_file: .env
+  nginx:
+    image: nginx:1.27-alpine
+    ports: ["8080:80"]
+    volumes: ["./nginx-canary.conf:/etc/nginx/nginx.conf:ro"]
+    depends_on: [rag-stable, rag-canary]

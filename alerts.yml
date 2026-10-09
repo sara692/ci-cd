@@ -1,0 +1,10 @@
+groups:
+  - name: rag
+    rules:
+      - alert: LowFaithfulness
+        expr: rag_faithfulness_rolling < 0.80
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: "RAG faithfulness below 0.80"
+          description: "Rolling faithfulness is {{ $value }}"
