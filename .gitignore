@@ -17,9 +17,6 @@ data/raw
 reports/*
 !reports/index_manifest.json
 
-tests
-notebooks
-
 # built indexes (CI rebuilds them)
 data/index*/
 
