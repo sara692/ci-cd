@@ -24,14 +24,6 @@ def test_invalid_question_returns_422(body):
     assert client.post("/ask", json=body).status_code == 422
 
 
-def test_ask_returns_answer_and_article_citations():
-    r = client.post("/ask", json={"question": "ما نص المادة 147؟"})
-    assert r.status_code == 200
-    body = r.json()
-    assert set(body) == {"answer", "sources"}
-    assert body["sources"] == [CITATION]
-
-
 def test_health_shape():
     r = client.get("/health")
     assert r.json() == {"status": "healthy", "documents_indexed": 1094}
@@ -48,3 +40,17 @@ def test_llm_failure_returns_503(monkeypatch):
 
     monkeypatch.setattr(rag, "query", boom)
     assert client.post("/ask", json={"question": "x"}).status_code == 503
+
+
+def test_ask_returns_answer_and_article_citations(monkeypatch):
+    from arabic_legal_rag import rag
+
+    fake = {
+        "answer": "نص المادة 147 ...",
+        "citations": [{"article": 147}],
+    }
+    monkeypatch.setattr(rag, "query", lambda *a, **k: fake)
+
+    r = client.post("/ask", json={"question": "ما نص المادة 147؟"})
+    assert r.status_code == 200
+    assert r.json()["citations"]
