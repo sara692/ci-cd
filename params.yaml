@@ -1,15 +1,15 @@
 corpus_path: data/processed/civil_code.json
-index_dir: data/index
+embedding_model: baai/bge-m3
+index_dir: data/index_bge
+query_prefix: ""
+passage_prefix: ""
+judge_embedding_model: baai/bge-m3
 collection: civil_code
 chunk_text: ar_en # ar_only | ar_en | header_ar_en
-embedding_model: intfloat/multilingual-e5-base
-query_prefix: "query: " # e5 needs prefixes; bge-m3 does not ("" for both)
-passage_prefix: "passage: "
 top_k: 5
-batch_size: 32
+batch_size: 16
 llm_temperature: 0.0
 llm_max_tokens: 700
 max_context_articles: 5
 min_score: 0.0 # calibrate in step 8
-mlflow_experiment: arabic-legal-rag-chunking
-judge_embedding_model: intfloat/multilingual-e5-base
+mlflow_experiment: arabic-legal-rag-chunking2

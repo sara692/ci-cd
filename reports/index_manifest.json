@@ -1,9 +1,9 @@
 {
   "n_chunks": 1094,
-  "embedding_model": "intfloat/multilingual-e5-base",
+  "embedding_model": "baai/bge-m3",
   "chunk_text": "ar_en",
   "corpus_sha256": "089d3c55243a0a1661de189ad4c26f51a33a41cd8122735d2836833780b92c49",
-  "max_seq_length": 512,
-  "max_tokens": 973,
-  "n_truncated": 4
+  "max_seq_length": 8192,
+  "max_tokens": 1186,
+  "n_truncated": 0
 }

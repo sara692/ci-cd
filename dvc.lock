@@ -10,8 +10,8 @@ stages:
       size: 2599703
     - path: src/arabic_legal_rag/ingestion
       hash: md5
-      md5: 36c2e3f038cb6e90aad0e8eb7359121a.dir
-      size: 33340
+      md5: 7519f5cdeef9715e5e2cf6304fa147a5.dir
+      size: 37270
       nfiles: 14
     outs:
     - path: data/processed/civil_code.json

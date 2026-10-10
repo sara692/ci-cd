@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_FROZEN: "1" # use uv.lock exactly, never re-resolve in CI
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - run: uv sync # base deps + the `dev` dependency group (ruff, black, pytest)
+      - run: uv run ruff check .
+      - run: uv run black --check .
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - run: uv sync
+      - run: uv run pytest -m "not slow" -q # `slow` tests need the built index and the embeddings API
+
+  evaluate:
+    runs-on: ubuntu-latest
+    environment: RAG-Arabic
+    needs: test
+    timeout-minutes: 40
+    # forks get no secrets, so the gate can't run for them
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    env:
+      ANONYMIZED_TELEMETRY: "False"
+      # answer LLM
+      LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+      LLM_MODEL: ${{ vars.LLM_MODEL }}
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+      # RAGAS judge (a different model from the generator)
+      JUDGE_BASE_URL: ${{ vars.JUDGE_BASE_URL }}
+      JUDGE_MODEL: ${{ vars.JUDGE_MODEL }}
+      JUDGE_API_KEY: ${{ secrets.JUDGE_API_KEY }}
+      JUDGE_WORKERS: "1"
+      # embeddings API (no local model, no Hugging Face)
+      EMBED_BASE_URL: ${{ vars.EMBED_BASE_URL }}
+      EMBED_API_KEY: ${{ secrets.EMBED_API_KEY }}
+      EMBED_MAX_TOKENS: "8192"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - run: uv sync --no-dev --extra track
+
+      # No DVC: the index is rebuilt from data/processed/civil_code.json, which must be committed to git.
+      - name: Rebuild index
+        run: uv run python -m arabic_legal_rag.ingestion.index
+
+      - name: RAGAS gate
+        run: uv run python -m arabic_legal_rag.evaluation.ci_gate
+
+      - name: Upload metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-metrics
+          path: reports/ci_metrics.json
+
+      - name: Upload index for the image build
+        uses: actions/upload-artifact@v4
+        with:
+          name: index
+          path: |
+            data/index_bge
+            reports/index_manifest.json
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: evaluate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: index
+          path: . # restores data/index_bge/ and reports/index_manifest.json
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5 # lower-cases the image name, which ghcr.io requires
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha
+            type=raw,value=latest
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

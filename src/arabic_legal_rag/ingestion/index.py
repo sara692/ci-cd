@@ -8,7 +8,7 @@ from .chunker import build_chunks
 from .embedder import embed, token_report
 
 
-def build_index(params, manifest_path=None):
+def build_index(params=None, manifest_path=None):
     p = params or load_params()
     corpus = ROOT / p["corpus_path"]
     records = json.loads(corpus.read_text(encoding="utf-8"))

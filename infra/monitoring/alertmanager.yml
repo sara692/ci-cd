@@ -1,0 +1,6 @@
+route:
+  receiver: notify
+receivers:
+  - name: notify
+    webhook_configs:
+      - url_file: /etc/alertmanager/secrets/webhook_url

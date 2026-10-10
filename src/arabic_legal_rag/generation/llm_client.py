@@ -7,7 +7,7 @@ def make_llm(params: dict):
     """Return a function messages -> answer text. Reads the endpoint from the environment."""
     client = OpenAI(
         base_url=os.environ["LLM_BASE_URL"],
-        api_key=os.getenv("LLM_API_KEY", "none"),
+        api_key=os.environ["LLM_API_KEY"],
     )
     model = os.environ["LLM_MODEL"]
 
