@@ -35,6 +35,7 @@ jobs:
 
   evaluate:
     runs-on: ubuntu-latest
+    environment: RAG-Arabic
     needs: test
     timeout-minutes: 40
     # forks get no secrets, so the gate can't run for them
